@@ -1,0 +1,15 @@
+[req]
+distinguished_name = subject
+x509_extensions = extensions
+prompt = no
+
+[subject]
+CN = OpenFunASR Local Signing
+O = OpenFunASR Local
+
+[extensions]
+basicConstraints = critical, CA:false
+keyUsage = critical, digitalSignature
+extendedKeyUsage = codeSigning
+subjectKeyIdentifier = hash
+authorityKeyIdentifier = keyid

@@ -1,0 +1,29 @@
+{
+  "runtime": {
+    "url": "https://github.com/modelscope/FunASR/releases/download/runtime-llamacpp-v0.2.1/funasr-llamacpp-macos-arm64.tar.gz",
+    "sha256": "bc63c4d4b96f2465f1d258600668a971f4f600d661f1859b03797cefaa417167",
+    "member": "llama-funasr-cli"
+  },
+  "models": [
+    {
+      "name": "funasr-encoder-f16.gguf",
+      "url": "https://huggingface.co/FunAudioLLM/Fun-ASR-Nano-GGUF/resolve/46e849502a867080d66d351b8dfb1018b607e509/funasr-encoder-f16.gguf",
+      "sha256": "f92f91d01a24fbed6c863495b2ee8c6a6788144a02858b75743f0946668de8a2"
+    },
+    {
+      "name": "qwen3-0.6b-q5km.gguf",
+      "url": "https://huggingface.co/FunAudioLLM/Fun-ASR-Nano-GGUF/resolve/46e849502a867080d66d351b8dfb1018b607e509/qwen3-0.6b-q5km.gguf",
+      "sha256": "dc2e6e195c534cbaea208c030d3ab55be4d3385ae4b726966cff8639a69aa2a2"
+    },
+    {
+      "name": "fsmn-vad.gguf",
+      "url": "https://huggingface.co/FunAudioLLM/fsmn-vad-GGUF/resolve/6840bae4c5c92ee8c04faaf4db23dd0105098d7f/fsmn-vad.gguf",
+      "sha256": "1270f2559c495f4e7b6e739541151027d360761a3fda43fc147034f5719f5479"
+    },
+    {
+      "name": "ggml-silero-v6.2.0.bin",
+      "url": "https://huggingface.co/ggml-org/whisper-vad/resolve/9ffd54a1e1ee413ddf265af9913beaf518d1639b/ggml-silero-v6.2.0.bin",
+      "sha256": "2aa269b785eeb53a82983a20501ddf7c1d9c48e33ab63a41391ac6c9f7fb6987"
+    }
+  ]
+}

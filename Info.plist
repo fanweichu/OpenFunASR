@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleDevelopmentRegion</key>
+    <string>zh_CN</string>
+    <key>CFBundleExecutable</key>
+    <string>OpenFunASRLauncher</string>
+    <key>CFBundleIdentifier</key>
+    <string>local.openfunasr.app</string>
+    <key>CFBundleInfoDictionaryVersion</key>
+    <string>6.0</string>
+    <key>CFBundleName</key>
+    <string>OpenFunASR</string>
+    <key>CFBundlePackageType</key>
+    <string>APPL</string>
+    <key>CFBundleShortVersionString</key>
+    <string>2.0.2</string>
+    <key>CFBundleVersion</key>
+    <string>8</string>
+    <key>LSMinimumSystemVersion</key>
+    <string>12.0</string>
+    <key>LSUIElement</key>
+    <true/>
+    <key>NSHighResolutionCapable</key>
+    <true/>
+    <key>NSMicrophoneUsageDescription</key>
+    <string>用于按住快捷键录音并在本机通过 Fun-ASR 转写文本。</string>
+    <key>NSAppleEventsUsageDescription</key>
+    <string>用于将识别结果自动粘贴到当前光标位置。</string>
+    <key>NSInputMonitoringUsageDescription</key>
+    <string>用于监听全局快捷键 F5/F9 触发录音。</string>
+</dict>
+</plist>

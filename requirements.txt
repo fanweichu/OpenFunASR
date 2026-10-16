@@ -1,0 +1,8 @@
+# Python 3.10–3.12: the app still uses stdlib audioop, removed in Python 3.13.
+pyobjc-core==12.1
+pyobjc-framework-Cocoa==12.1
+pyobjc-framework-Quartz==12.1
+pyobjc-framework-ApplicationServices==12.1
+pyobjc-framework-CoreText==12.1
+pyperclip==1.11.0
+pyinstaller==6.19.0
