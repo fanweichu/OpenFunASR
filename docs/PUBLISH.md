@@ -49,8 +49,7 @@ git log -1 --format=fuller
 
 在确定目标 GitHub 账号／组织后，通过 GitHub 页面创建空的公开仓库 `OpenFunASR`，
 不要让网页再生成 README 或 LICENSE。添加页面提供的 HTTPS remote，再推送 `main`。
-也可以在已安装并登录的 GitHub CLI 中，如果这份副本已经包含脱敏的初始提交，保留它并跳过初始化和再次提交，直接检查文件、
-提交身份及 remote。对于不含 Git 历史的源码压缩包，在解压后的项目目录执行：
+也可以在已安装并登录的 GitHub CLI 中，在本仓库目录执行：
 
 ```bash
 gh repo create OpenFunASR --public --source=. --remote=origin --push \
