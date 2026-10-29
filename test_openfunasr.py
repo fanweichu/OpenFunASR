@@ -11,6 +11,7 @@ from pathlib import Path
 
 from openfunasr_app import (
     build_funasr_command,
+    chinese_integer_to_arabic,
     clean_transcript,
     merge_config,
     postprocess_transcript,
@@ -50,7 +51,7 @@ def main() -> None:
     assert clean_transcript("百分之五十，圆周率三点一四") == "50%，圆周率3.14"
     assert clean_transcript("一方面要注意，万一失败也千万不要慌") == "一方面要注意，万一失败也千万不要慌"
     assert clean_transcript("第三个人从三到五楼") == "第三个人从3到5楼"
-    assert postprocess_transcript("第一段。第二段。", 3) == ("第一段，第二段。", 0, 1)
+    assert postprocess_transcript("第一段。第二段。", 3) == ("第一段。第二段。", 0, 0)
     assert postprocess_transcript("第一段。第二段。", 1) == ("第一段。第二段。", 0, 0)
     assert clean_transcript("版本3.14不变") == "版本3.14不变"
 
@@ -81,6 +82,65 @@ def main() -> None:
         "有哪些好吃的？餐厅很多。",
         0,
     )
+
+    # Check semantics, not just that a substitution ran. Include neighboring
+    # cases so the repair cannot turn quantities, identifiers or valid prose
+    # into different content.
+    quality_cases = [
+        ("增长百分之三点五。", "增长3.5%。"),
+        ("下降百分之零点五。", "下降0.5%。"),
+        ("变化百分之负三点零五。", "变化-3.05%。"),
+        ("百分之零点零零五和百分之十二点五。", "0.005%和12.5%。"),
+        ("要等三四分钟，需要两三个人。", "要等三四分钟，需要两三个人。"),
+        ("约三五天，还有七八十人。", "约三五天，还有七八十人。"),
+        ("有两三万元，等三四十分钟。", "有两三万元，等三四十分钟。"),
+        ("编号三四，验证码是零零一二三四。", "编号34，验证码是001234。"),
+        ("编号为零零五六，尾号：零零七八。", "编号为0056，尾号：0078。"),
+        ("编号 是 零零五六。", "编号 是 0056。"),
+        ("一万亿元和一亿二千万欧元。", "1000000000000元和120000000欧元。"),
+        ("预算一千二元。", "预算一千二元。"),
+        ("一百二元、一万二元、一亿二元。", "一百二元、一万二元、一亿二元。"),
+        ("一千零二元和一千二百元。", "1002元和1200元。"),
+        ("测试结，果已经出来了。", "测试结果已经出来了。"),
+        ("分析结, 果表明可以继续。", "分析结果表明可以继续。"),
+        ("检查结果，随后再决定。", "检查结果，随后再决定。"),
+        ("先把袋口打结，果子就不会掉下来。", "先把袋口打结，果子就不会掉下来。"),
+        ("有哪些开源的？Python。", "有哪些开源的？Python。"),
+        ("有哪些可用的？Node22。", "有哪些可用的？Node22。"),
+        ("请调用 foo(bar)，再读取 items[0]。", "请调用 foo(bar)，再读取 items[0]。"),
+        ("方案 A (recommended) 可以保留。", "方案 A (recommended) 可以保留。"),
+        ("保留[备注]以及(foo(bar))。", "保留[备注]以及(foo(bar))。"),
+    ]
+    for raw, expected in quality_cases:
+        actual = clean_transcript(raw)
+        assert actual == expected, (raw, expected, actual)
+        assert clean_transcript(actual) == actual, ("not idempotent", raw, actual)
+
+    integer_cases = {
+        "一万亿": "1000000000000",
+        "一万亿零三万零五": "1000000030005",
+        "一亿零三万零五": "100030005",
+        "一千亿二千三百万": "100023000000",
+        "一百零二": "102",
+        "十万零一": "100001",
+        "一千零二十": "1020",
+        "一万二千": "12000",
+        "壹萬億": "1000000000000",
+        "一千二": None,
+        "两三万": None,
+        "一百百": None,
+    }
+    for raw, expected in integer_cases.items():
+        assert chinese_integer_to_arabic(raw) == expected, (raw, expected)
+
+    for segments in (1, 2, 5):
+        for text in (
+            "今天先到这里。明天继续。",
+            "今天结束.明天继续.",
+            "Please review the PR. Then run pytest.",
+            "版本3.14不变，阈值0.05。",
+        ):
+            assert postprocess_transcript(text, segments) == (text, 0, 0)
 
     with tempfile.TemporaryDirectory() as directory:
         root = Path(directory)

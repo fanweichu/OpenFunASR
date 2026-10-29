@@ -108,6 +108,20 @@ export OPENFUNASR_TEST_AUDIO="$HOME/speech-test.wav"
 This checks nonempty speech output and silence rejection. It does not test the
 microphone, recognition accuracy, menu bar, global hotkeys or actual paste.
 
+Version 2.0.3 fixes decimal percentages and nested Chinese number units, preserves
+approximate quantities and ambiguous shorthand, and avoids rewriting sentence
+boundaries based only on VAD segment count. Bracketed content and English short
+answers are preserved. See the [fix record](docs/OUTPUT_QUALITY_FIXES.zh-CN.md)
+and [audio quality test plan](docs/OUTPUT_QUALITY_TEST_PLAN.zh-CN.md) (in Chinese).
+To replay the 24 synthetic text cases without recording audio or running ASR:
+
+```bash
+.venv/bin/python scripts/probe_output_quality.py --output benchmark-results/quality-run
+```
+
+The report separates text-processing failures from formatting differences and
+ambiguous speech. These targeted cases do not measure recognition accuracy.
+
 ## Privacy, updates and publishing
 
 Settings, diagnostic logs and the installed runtime are stored in

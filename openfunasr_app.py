@@ -149,7 +149,10 @@ CHINESE_DECIMAL_PATTERN = re.compile(
     f"(?P<sign>负)?(?P<whole>[{CHINESE_NUMERAL_CHARACTERS}]+)点"
     f"(?P<fraction>[零〇一二两三四五六七八九壹贰叁肆伍陆柒捌玖]+)"
 )
-CHINESE_PERCENT_PATTERN = re.compile(f"百分之(?P<number>[{CHINESE_NUMERAL_CHARACTERS}]+)")
+CHINESE_PERCENT_PATTERN = re.compile(
+    f"百分之(?P<sign>负)?(?P<number>[{CHINESE_NUMERAL_CHARACTERS}]+)"
+    r"(?:点(?P<fraction>[零〇一二两三四五六七八九壹贰叁肆伍陆柒捌玖]+))?"
+)
 STRONG_NUMERIC_FOLLOWER_PATTERN = re.compile(
     r"(?:个|位|名|人|次|遍|回|件|条|份|张|本|台|辆|只|支|杯|瓶|箱|套|组|种|类|项|"
     r"页|行|列|章|节|集|季|期|级|层|楼|号|天|周|星期|年|月|日|小时|分钟|秒|岁|"
@@ -188,6 +191,7 @@ PREFIXED_CHINESE_HOUR_PATTERN = re.compile(
 )
 CONTEXTUAL_DIGIT_SEQUENCE_PATTERN = re.compile(
     r"(?P<label>验证码|密码|编号|号码|代码|尾号|工号|订单号|房间号)"
+    r"(?P<separator>\s*(?:是|为|[:：])?\s*)"
     r"(?P<number>[零〇一二两三四五六七八九壹贰叁肆伍陆柒捌玖]{2,})"
 )
 LEXICAL_NUMERAL_TOKENS = {"万一", "千万"}
@@ -208,6 +212,9 @@ PAUSE_COMMA_MODIFIER_PATTERN = re.compile(
     r"可以|不会|不能|不要|没有)[，,]\s*"
     r"(?=(?:喜欢|讨厌|厌恶|关注|要求|接受|拒绝|同意|反对|知道|明白|发现|"
     r"看到|听到|担心|害怕|希望|重要|清楚|明显|严重|好|差|大|小|高|低|快|慢))"
+)
+PAUSE_COMMA_RESULT_WORD_PATTERN = re.compile(
+    r"(?P<head>(?:测试|检测|检查|分析|计算|识别|处理|查询|实验|验证)结)[，,]\s*(?=果)"
 )
 RELATIVE_CLAUSE_QUESTION_BREAK_PATTERN = re.compile(
     r"(?P<head>(?:^|[。！？!?])[^。！？!?]*"
@@ -447,26 +454,56 @@ def chinese_integer_to_arabic(token: str) -> str | None:
         except KeyError:
             return None
 
-    if not any(character in CHINESE_DIGIT_VALUES for character in token):
-        return "10" if token in {"十", "拾"} else None
+    # Do not invent a value for oral shorthand (一千二) or approximate
+    # quantities (两三万、三四十). Explicit zeroes remain unambiguous.
+    if re.search(r"[百佰千仟万萬亿億][一二两三四五六七八九壹贰叁肆伍陆柒捌玖]$", token):
+        return None
+    if re.search(r"[一二两三四五六七八九壹贰叁肆伍陆柒捌玖]{2,}", token):
+        return None
 
-    total = 0
-    section = 0
-    number = 0
-    for character in token:
-        if character in CHINESE_DIGIT_VALUES:
-            number = CHINESE_DIGIT_VALUES[character]
-        elif character in CHINESE_SMALL_UNITS:
-            section += (number or 1) * CHINESE_SMALL_UNITS[character]
-            number = 0
-        elif character in CHINESE_LARGE_UNITS:
-            section += number
-            total += (section or 1) * CHINESE_LARGE_UNITS[character]
-            section = 0
-            number = 0
-        else:
-            return None
-    return str(total + section + number)
+    def parse_integer(part: str) -> int | None:
+        if not part:
+            return 0
+        large_units = [CHINESE_LARGE_UNITS[c] for c in part if c in CHINESE_LARGE_UNITS]
+        if large_units:
+            # Split at the largest unit: 一万亿 = (一万) * 亿, whereas
+            # 一亿二千万 = 一 * 亿 + 二千万. Repeated equal units are ambiguous.
+            unit = max(large_units)
+            positions = [i for i, c in enumerate(part) if CHINESE_LARGE_UNITS.get(c) == unit]
+            if len(positions) != 1:
+                return None
+            index = positions[0]
+            coefficient = parse_integer(part[:index]) if index else 1
+            remainder = parse_integer(part[index + 1:])
+            if coefficient is None or remainder is None or remainder >= unit:
+                return None
+            return coefficient * unit + remainder
+
+        total = 0
+        number = None
+        previous_unit = 10_000
+        for character in part:
+            if character in CHINESE_DIGIT_VALUES:
+                if number not in (None, 0):
+                    return None
+                number = CHINESE_DIGIT_VALUES[character]
+            elif character in CHINESE_SMALL_UNITS:
+                unit = CHINESE_SMALL_UNITS[character]
+                if unit >= previous_unit or number == 0:
+                    return None
+                if number is None:
+                    if unit != 10 or total:
+                        return None
+                    number = 1
+                total += number * unit
+                number = None
+                previous_unit = unit
+            else:
+                return None
+        return total + (number or 0)
+
+    value = parse_integer(token)
+    return str(value) if value is not None else None
 
 
 def normalize_chinese_numerals(text: str) -> tuple[str, int]:
@@ -478,8 +515,12 @@ def normalize_chinese_numerals(text: str) -> tuple[str, int]:
         value = chinese_integer_to_arabic(match.group("number"))
         if value is None:
             return match.group(0)
+        fraction = match.group("fraction")
+        if fraction is not None:
+            value += "." + "".join(str(CHINESE_DIGIT_VALUES[c]) for c in fraction)
         conversions += 1
-        return f"{value}%"
+        sign = "-" if match.group("sign") else ""
+        return f"{sign}{value}%"
 
     def replace_decimal(match: re.Match[str]) -> str:
         nonlocal conversions
@@ -549,7 +590,7 @@ def normalize_chinese_numerals(text: str) -> tuple[str, int]:
         if number is None:
             return match.group(0)
         conversions += 1
-        return f'{match.group("label")}{number}'
+        return f'{match.group("label")}{match.group("separator")}{number}'
 
     text = CHINESE_MONTH_DAY_PATTERN.sub(replace_month_day, text)
     text = CHINESE_TIME_PATTERN.sub(replace_time, text)
@@ -587,6 +628,13 @@ def normalize_chinese_numerals(text: str) -> tuple[str, int]:
             bool(following) and following[:1] in "到至"
         )
         is_ordinal = previous == "第"
+        if (
+            not has_unit and not is_financial and not is_ordinal and not is_range
+            and re.fullmatch(r"[一二两三四五六七八九]{2}", token)
+        ):
+            # Bare pairs before a measure can mean an approximation (三四分钟).
+            # Explicit identifiers have already been handled above.
+            return token
         if is_ordinal and ARABIC_ORDINAL_FOLLOWER_PATTERN.match(following) is None:
             return token
         if not has_unit and not is_financial and not is_range and not is_ordinal:
@@ -628,6 +676,11 @@ def remove_spurious_pause_commas(text: str) -> tuple[str, int]:
     text = PAUSE_COMMA_MODIFIER_PATTERN.sub(
         lambda match: join_named_group(match, "modifier"), text
     )
+    # Only repair a split word with an explicit compound context. Bare
+    # 结，果 can cross a real clause boundary (打结，果子就不会掉下来).
+    text = PAUSE_COMMA_RESULT_WORD_PATTERN.sub(
+        lambda match: join_named_group(match, "head"), text
+    )
     return text, removed
 
 
@@ -638,6 +691,10 @@ def repair_spurious_question_breaks(text: str) -> tuple[str, int]:
     def move_question_mark(match: re.Match[str]) -> str:
         nonlocal repairs
         tail = match.group("tail")
+        # An identifier or English name can be a complete short answer.
+        # Without audio evidence, preserve that question/answer boundary.
+        if re.search(r"[A-Za-z0-9]", tail):
+            return match.group(0)
         if any(predicate in tail for predicate in QUESTION_BREAK_TAIL_PREDICATES):
             return match.group(0)
         repairs += 1
@@ -647,17 +704,15 @@ def repair_spurious_question_breaks(text: str) -> tuple[str, int]:
 
 
 def postprocess_transcript(text: str, speech_segment_count: int = 1) -> tuple[str, int, int]:
-    text = re.sub(r"\[.*?\]|\(.*?\)", "", text)
+    # Parentheses and brackets may contain spoken content or code arguments.
+    # Do not treat arbitrary bracketed text as an engine annotation.
     text = " ".join(line.strip() for line in text.splitlines() if line.strip())
     text, _ = remove_spurious_pause_commas(text)
     text, _ = repair_spurious_question_breaks(text)
     text, numeral_conversions = normalize_chinese_numerals(text)
-    softened_periods = 0
-    if speech_segment_count > 1:
-        text, softened_periods = re.subn(r"(?<=\S)。\s*(?=\S)", "，", text)
-        text, ascii_softened = re.subn(r"(?<=[\u3400-\u9fff])\.\s*(?=[\u3400-\u9fff])", "，", text)
-        softened_periods += ascii_softened
-    return text, numeral_conversions, softened_periods
+    # Segment count does not identify grammatical sentence boundaries. Keep
+    # the argument and the third return value for callers and diagnostics.
+    return text, numeral_conversions, 0
 
 
 def clean_transcript(text: str, speech_segment_count: int = 1) -> str:

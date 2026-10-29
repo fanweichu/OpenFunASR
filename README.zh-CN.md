@@ -101,6 +101,17 @@ export OPENFUNASR_TEST_AUDIO="$HOME/speech-test.wav"
 测试覆盖真实语音产生非空文本、静音不输出文本；不等于录音、识别准确率、菜单栏、
 快捷键和实际粘贴已经通过验收。
 
+2.0.3 修复了小数百分比和中文大单位计算，保留约数与有歧义的口语省略表达，不再仅凭
+VAD 片段数改写句界，并保留括号正文与英文短答。详见[修复记录](docs/OUTPUT_QUALITY_FIXES.zh-CN.md)
+和[音频质量测试计划](docs/OUTPUT_QUALITY_TEST_PLAN.zh-CN.md)。
+无需录音或运行语音识别即可复跑24个合成文本案例：
+
+```bash
+.venv/bin/python scripts/probe_output_quality.py --output benchmark-results/quality-run
+```
+
+报告分别记录文本处理错误、格式差异和语义待定项。这些定向案例不代表语音识别准确率。
+
 ## 隐私、更新与发布
 
 设置、诊断日志和安装后的运行库存放在 `~/Library/Application Support/OpenFunASR/`。
